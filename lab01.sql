@@ -1,0 +1,171 @@
+﻿--BÀI TẬP VIẾT CÂU TRUY VẤN
+--1.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quốc” sản xuất có giá từ 30.000 đến 40.000.
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE NUOCSX = N'Hàn Quốc' AND GIABAN >= 30000 AND GIABAN <= 40000
+--2.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quoc” hoặc “Thái Lan” sản xuất có giá từ 30.000 đến 40.000.
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE (NUOCSX = N'Hàn Quốc' OR NUOCSX = 'Thái Lan') AND GIABAN >= 30000 AND GIABAN <= 40000
+--3.	Tìm các số hóa đơn mua cùng lúc 2 sản phẩm có mã số “BB01” và “BB02”, mỗi sản phẩm mua với số lượng từ 20 đến 50.
+SELECT SOHD
+FROM  CTHD
+WHERE SOLUONG BETWEEN 20 AND 50 AND MASP='BB01'
+  AND SOHD IN (  SELECT SOHD
+     FROM  CTHD
+     WHERE MASP='BB02' AND SOLUONG BETWEEN 20 AND 50)
+---------------------------------------------------
+	SELECT SOHD
+	FROM  CTHD
+	WHERE SOLUONG BETWEEN 20 AND 50 AND MASP='BB01'
+INTERSECT
+	SELECT SOHD
+	FROM  CTHD
+	WHERE SOLUONG BETWEEN 20 AND 50 AND MASP='BB02'
+--4.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quoc” sản xuất hoặc các sản phẩm được bán ra trong năm 2020.
+SELECT SP.TENSP, SP.MASP
+FROM SANPHAM SP, HOADON HD, CTHD CT
+WHERE SP.NUOCSX = N'Hàn Quốc'
+	AND HD.SOHD = CT.SOHD
+	AND SP.MASP = CT.MASP
+	AND YEAR(NGHD) = 2020
+--5.	In ra danh sách các sản phẩm (MASP,TENSP) không bán được trong năm 2020
+SELECT SP.TENSP, SP.MASP
+FROM SANPHAM SP, HOADON HD, CTHD CT
+WHERE HD.SOHD = CT.SOHD
+	AND SP.MASP = CT.MASP
+	AND YEAR(NGHD) != 2020
+--6.	In ra danh sách các sản phẩm (MASP,TENSP) do “Hàn Quoc” sản xuất không bán được trong năm 2020
+SELECT SP.TENSP, SP.MASP
+FROM SANPHAM SP, HOADON HD, CTHD CT
+WHERE SP.NUOCSX = N'Hàn Quốc'
+	AND HD.SOHD = CT.SOHD
+	AND SP.MASP = CT.MASP
+	AND YEAR(NGHD) != 2020
+--7.	Tìm số hóa đơn đã mua tất cả các sản phẩm do Singapore sản xuất.
+--SELECT SOHD
+--FROM HOADON
+--WHERE SOHD IN (SELECT SOHD 
+--		FROM CTHD CT, SANPHAM SP 
+--		WHERE CT.MASP = SP.MASP AND SP.NUOCSX = 'Singapore')
+------------------
+--Cach 1
+SELECT*
+FROM HOADON HD
+WHERE NOT EXISTS (SELECT*
+					FROM SANPHAM SP
+					WHERE SP.NUOCSX ='Singapore'
+					AND NOT EXISTS (SELECT*
+									FROM CTHD CT
+									WHERE CT.MASP = SP.MASP
+									AND HD.SOHD = CT.SOHD))
+
+-------------------------
+--Cach 2
+SELECT HD.SOHD, HD.MAKH, HD.MANV, HD.NGHD, HD.TONGTRIGIA
+FROM HOADON HD, CTHD CT, SANPHAM SP
+WHERE HD.SOHD = CT.SOHD AND CT.MASP = SP.MASP
+AND NUOCSX ='SINGAPORE'
+GROUP BY HD.SOHD, HD.MAKH, HD.MANV, HD.NGHD, HD.TONGTRIGIA
+HAVING COUNT(CT.MASP) = (SELECT	COUNT(MASP) AS 'SP DO SINGAPORE SX'
+						FROM SANPHAM
+						WHERE NUOCSX = 'SINGAPORE')
+--8.	Tìm số hóa đơn trong năm 2019 đã mua ít nhất tất cả các sản phẩm do Singapore sản xuất.
+SELECT SOHD
+FROM HOADON
+WHERE YEAR(NGHD) = 2019 AND SOHD IN (SELECT SOHD 
+		FROM CTHD CT, SANPHAM SP 
+		WHERE CT.MASP = SP.MASP AND SP.NUOCSX = 'Singapore')
+--9.	Tìm họ tên khách hàng đã mua hóa đơn có trị giá cao nhất trong năm 2019
+SELECT HOTEN
+FROM KHACHHANG K INNER JOIN HOADON H
+ON K.MAKH = H.MAKH 
+AND SOHD IN (SELECT SOHD
+			FROM HOADON
+			WHERE YEAR(NGHD) = 2019 AND TONGTRIGIA = (SELECT MAX(TONGTRIGIA)
+							FROM HOADON))
+
+--10.	In ra danh sách các sản phẩm (MASP, TENSP) có giá bán bằng 1 trong 3 mức giá cao nhất. 
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE GIABAN IN (SELECT DISTINCT TOP 3 GIABAN
+			  FROM SANPHAM
+			  ORDER BY GIABAN DESC)
+
+--11.	In ra danh sách các sản phẩm (MASP, TENSP) do “Thai Lan” sản xuất có giá bằng 1 trong 3 mức giá cao nhất (của tất cả các sản phẩm).
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE NUOCSX = N'Thái Lan' AND GIABAN IN (SELECT DISTINCT TOP 3 GIABAN
+			  FROM SANPHAM
+			  ORDER BY GIABAN DESC)
+--12.	In ra danh sách khách hàng nằm trong 3 hạng cao nhất (xếp hạng theo doanh số).
+SELECT TOP 3 *
+FROM KHACHHANG
+ORDER BY DOANHSO DESC
+--13.	Tìm hóa đơn có mua ít nhất 4 sản phẩm khác nhau.
+SELECT *
+FROM HOADON
+WHERE SOHD IN (SELECT SOHD
+				FROM CTHD
+				WHERE SOLUONG >= 4)
+--14.	Tính doanh thu bán hàng của từng tháng trong năm 2019
+SELECT MONTH(NGHD) AS THANG, SUM(TONGTRIGIA) AS DOANHTHU
+FROM HOADON
+WHERE YEAR(NGHD) = 2019
+GROUP BY MONTH(NGHD)
+ORDER BY THANG ASC
+--15.	Tìm khách hàng (MAKH, HOTEN) có số lần mua hàng nhiều nhất.
+SELECT MAKH, HOTEN
+FROM KHACHHANG
+WHERE MAKH IN (SELECT TOP 1 MAKH
+			FROM HOADON
+			GROUP BY MAKH
+			ORDER BY COUNT(DISTINCT SOHD) DESC)
+--16.	Tìm sản phẩm (MASP, TENSP) có tổng số lượng bán ra thấp nhất trong năm 2019.
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE MASP IN (SELECT TOP 1 CT.MASP
+FROM HOADON HD, CTHD CT
+WHERE HD.SOHD = CT.SOHD AND YEAR(HD.NGHD) = 2019
+GROUP BY CT.MASP
+ORDER BY SUM(CT.SOLUONG) ASC)
+--17.	*Mỗi nước sản xuất, tìm sản phẩm (MASP,TENSP) có giá bán cao nhất.
+SELECT TEMP.NUOCSX, MASP, TENSP
+FROM (SELECT NUOCSX, MAX(GIABAN) AS MAX
+		FROM SANPHAM
+		GROUP BY NUOCSX) AS TEMP  
+		JOIN SANPHAM S 
+		ON S.GIABAN = TEMP.MAX 
+		WHERE TEMP.NUOCSX = S.NUOCSX
+--18.	*Trong 10 khách hàng có doanh số cao nhất, tìm khách hàng có số lần mua hàng nhiều nhất.
+--SELECT *
+--FROM KHACHHANG
+--WHERE MAKH = (SELECT TOP 1 A.MAKH
+--FROM (SELECT TOP 10 MAKH
+--FROM KHACHHANG
+--ORDER BY DOANHSO DESC) AS A
+--LEFT JOIN 
+--(SELECT MAKH, COUNT(SOHD) AS SL
+--FROM HOADON
+--GROUP BY MAKH) AS B
+--ON A.MAKH = B.MAKH
+--ORDER BY SL DESC)
+
+SELECT TOP 10*
+FROM KHACHHANG
+ORDER BY DOANHSO DESC
+
+SELECT MAKH, COUNT(SOHD) AS 'SO LAN MUA'
+FROM HOADON
+WHERE MAKH IS NOT NULL
+AND MAKH IN (SELECT TOP 10 MAKH
+			FROM KHACHHANG
+			ORDER BY DOANHSO DESC)
+GROUP BY MAKH
+HAVING COUNT(SOHD) >= ALL (SELECT COUNT(SOHD) AS 'SO LAN MUA'
+							FROM HOADON
+							WHERE MAKH IS NOT NULL
+							AND MAKH IN (SELECT TOP 10 MAKH
+										FROM KHACHHANG
+										ORDER BY DOANHSO DESC)
+							GROUP BY MAKH)
